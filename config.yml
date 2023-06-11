@@ -1,0 +1,4 @@
+fr.labedan.smartsheet_reader:
+  src: /home/pol/work/plab/knime/basic/smartsheet_reader
+  conda_env_path: /home/pol/work/plab/knime/basic/smartsheet_reader/env
+  debug_mode: true

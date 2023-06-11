@@ -1,0 +1,8 @@
+name: knime-smartsheet-extension
+channels:
+  - knime
+  - conda-forge
+dependencies:
+  - python=3.9
+  - knime-extension
+  - knime-python-base
