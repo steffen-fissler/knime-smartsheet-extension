@@ -1,0 +1,10 @@
+name: smartsheet_writer
+author: Paul LABEDAN
+env_yml_path: environment.yml
+extension_module: extension
+description: Smartsheet Writer
+long_description: This node writes Smartsheet sheets.
+group_id: fr.labedan
+version: 0.1.0
+vendor: Paul LABEDAN
+license_file: LICENSE.TXT

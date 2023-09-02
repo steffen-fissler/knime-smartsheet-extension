@@ -9,14 +9,14 @@ from collections.abc import Callable
 LOGGER = logging.getLogger(__name__)
 
 
-@knext.node(name='Smartsheet Reader', node_type=knext.NodeType.SOURCE, icon_path='icon.png', category='/io/read')
-@knext.output_table(name='Output Data', description='Data from Smartsheet')
+@knext.node(name='Smartsheet Writer', node_type=knext.NodeType.SINK, icon_path='icon.png', category='/io/write')
+@knext.input_table(name='Input Data', description='Data source')
 class SmartsheetReaderNode(knext.PythonNode):
-    """Smartsheet Reader Node
-    Reads Smartsheet sheet
+    """Smartsheet Writer Node
+    Writes Smartsheet sheet
     """
     sheetId = knext.StringParameter(
-        label='Sheet', description='The Smartsheet sheet to be read', default_value='5911621122975620')
+        label='Sheet', description='The Smartsheet sheet to be written', default_value='5911621122975620')
 
     def __init__(self):
         self.access_token = os.environ.get('SMARTSHEET_ACCESS_TOKEN', '')
@@ -33,17 +33,15 @@ class SmartsheetReaderNode(knext.PythonNode):
             since_version=None,
         )
 
-    def configure(self, configure_context: knext.ConfigurationContext):
+    def configure(self, configure_context: knext.ConfigurationContext, _input):
         if not self.access_token:
             raise knext.InvalidParametersError('SMARTSHEET_ACCESS_TOKEN is not set in your env')
         return None
 
-    def execute(self, exec_context: knext.ExecutionContext):
+    def execute(self, exec_context: knext.ExecutionContext, _input):
+        input_pandas = input.to_pandas()
 
         smart = smartsheet.Smartsheet()
         sheet = smart.Sheets.get_sheet(self.sheetId)
 
-        df = pd.DataFrame([[c.value for c in r.cells] for r in sheet.rows])
-        df.columns = [c.title for c in sheet.columns]
-
-        return knext.Table.from_pandas(df)
+        return None

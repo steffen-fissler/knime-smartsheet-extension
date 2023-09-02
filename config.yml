@@ -2,3 +2,7 @@ fr.labedan.smartsheet_reader:
   src: /home/pol/work/plab/knime/basic/smartsheet_reader
   conda_env_path: /home/pol/work/plab/knime/basic/smartsheet_reader/env
   debug_mode: true
+fr.labedan.smartsheet_writer:
+  src: /home/pol/work/plab/knime/basic/smartsheet_writer
+  conda_env_path: /home/pol/work/plab/knime/basic/smartsheet_writer/env
+  debug_mode: true
