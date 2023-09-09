@@ -1,10 +1,16 @@
 import os
 import logging
 
-import pandas as pd
 import knime.extension as knext
+import pandas as pd
 import smartsheet
 from collections.abc import Callable
+from typing import Dict, List, NewType
+
+RowId = NewType('RowId', int)
+ColumnId = NewType('ColumnId', int)
+ColumnTitle = NewType('ColumnTitle', str)
+SyncRef = NewType('SyncRef', str)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -16,7 +22,14 @@ class SmartsheetReaderNode(knext.PythonNode):
     Writes Smartsheet sheet
     """
     sheetId = knext.StringParameter(
-        label='Sheet', description='The Smartsheet sheet to be written', default_value='5911621122975620')
+        label='Sheet', description='The Smartsheet sheet to be written', default_value='1228391034343300')
+    referenceColumn = knext.StringParameter(
+        label='Ref column', description='The name of the column to be used as reference')
+    addMissingRefs = knext.BoolParameter(
+        label='Add new', description='Add new (no match with output) references')
+    #removeOldRefs = knext.BoolParameter(
+    #    label='Remove old', description='Remove old (no match with input) references')
+    removeOldRefs = False
 
     def __init__(self):
         self.access_token = os.environ.get('SMARTSHEET_ACCESS_TOKEN', '')
@@ -33,15 +46,122 @@ class SmartsheetReaderNode(knext.PythonNode):
             since_version=None,
         )
 
-    def configure(self, configure_context: knext.ConfigurationContext, _input):
+    def configure(self, configure_context: knext.ConfigurationContext, input):
         if not self.access_token:
             raise knext.InvalidParametersError('SMARTSHEET_ACCESS_TOKEN is not set in your env')
+
         return None
 
-    def execute(self, exec_context: knext.ExecutionContext, _input):
-        input_pandas = input.to_pandas()
+    @classmethod
+    def get_smartsheet_cell_value(cls, pd_value):
+        if pd.isna(pd_value):
+            return ''
 
-        smart = smartsheet.Smartsheet()
+        try:
+            if float(int(pd_value)) == float(pd_value):
+                return int(pd_value)
+            else:
+                return float(pd_value)
+        except Exception as _e:
+            return str(pd_value)
+
+    def execute(self, exec_context: knext.ExecutionContext, input):
+        input_pandas: pd.PeriodDtype = input.to_pandas()
+
+        smart: smartsheet.Smartsheet = smartsheet.Smartsheet()
         sheet = smart.Sheets.get_sheet(self.sheetId)
+        if not sheet:
+            raise knext.InvalidParametersError('Output sheet not found in Smartsheet')
+
+        input_columns: List[ColumnTitle] = [c for c in input_pandas]
+        output_columns: Dict[ColumnTitle, ColumnId] = {c.title: c.id for c in sheet.columns}
+        output_columns_name_by_id: Dict[ColumnId, ColumnTitle] = {v: k for k, v in output_columns.items()}
+
+        LOGGER.info("input: %s", repr({c: c in output_columns for c in input_columns}))
+        LOGGER.info("output: %s", repr(output_columns))
+
+        if self.referenceColumn not in input_columns:
+            raise knext.InvalidParametersError('Reference column not found in input columns')
+        if self.referenceColumn not in output_columns.keys():
+            raise knext.InvalidParametersError('Reference column not found in output columns')
+
+        ref_column_id: ColumnId = output_columns[self.referenceColumn]
+
+        input_references: List[SyncRef] = [r for r in input_pandas[self.referenceColumn]]
+        LOGGER.info("input refs: %s", repr(input_references))
+
+        output_ref_no_match: List[SyncRef] = list()
+        output_ref_to_be_synced: Dict[SyncRef, RowId] = dict()
+        output_ref_missing: List[SyncRef] = list()
+        for row in sheet.rows:
+            for cell in [c for c in row.cells if c.value is not None]:
+                if cell.column_id == ref_column_id:
+                    if cell.value in input_references:
+                        output_ref_to_be_synced[SyncRef(cell.value)] = row.id
+                    else:
+                        output_ref_no_match.append(SyncRef(cell.value))
+        output_ref_missing = list(set(input_references) - set(output_ref_to_be_synced.keys()))
+
+        LOGGER.info('sync to be done:')
+        LOGGER.info('- matching refs: %d -> UPDATE', len(output_ref_to_be_synced))
+        LOGGER.info('- new      refs: %d -> %s', len(output_ref_missing),
+                    'CREATE' if self.addMissingRefs else 'SKIP')
+        LOGGER.info('- old      refs: %d -> %s', len(output_ref_no_match),
+                    'DELETE' if self.removeOldRefs else 'SKIP')
+
+        indexed_input = input_pandas.set_index(self.referenceColumn)
+
+        # sync existing rows
+        updated_rows: List[smartsheet.models.Row] = []
+        synced_columns = set(input_columns) - {self.referenceColumn}
+        for ref, rowId in output_ref_to_be_synced.items():
+            updated_row: smartsheet.models.Row = smartsheet.models.Row()
+            updated_row.id = rowId
+            source_row = indexed_input.loc[ref]
+
+            target_row: smartsheet.models.Row = smart.Sheets.get_row(self.sheetId, rowId, include='columns,columnType')
+
+            for old_cell in target_row.cells:
+                if output_columns_name_by_id[old_cell.column_id] in synced_columns:
+                    updated_cell: smartsheet.models.Cell = smartsheet.models.Cell()
+                    updated_cell.column_id = old_cell.column_id
+
+                    value = source_row[output_columns_name_by_id[old_cell.column_id]]
+                    updated_cell.value = self.get_smartsheet_cell_value(value)
+
+                    updated_row.cells.append(updated_cell)
+
+            # add row to the list
+            updated_rows.append(updated_row)
+        if len(updated_rows) > 0:
+            smart.Sheets.update_rows(self.sheetId, updated_rows)
+        LOGGER.info('- {} matching rows UPDATED'.format(len(updated_rows)))
+
+        # add new rows
+        if self.addMissingRefs:
+            new_rows: List[smartsheet.models.Row] = []
+            for ref in output_ref_missing:
+                new_row: smartsheet.models.Row = smartsheet.models.Row()
+                source_row = indexed_input.loc[ref]
+
+                for column_name, column_id in output_columns.items():
+                    if column_name in input_columns:
+                        new_cell: smartsheet.models.Cell = smartsheet.models.Cell()
+                        new_cell.column_id = column_id
+
+                        if column_name != self.referenceColumn:
+                            value = source_row[column_name]
+                        else:
+                            value = source_row.name
+                        new_cell.value = self.get_smartsheet_cell_value(value)
+
+                        new_row.cells.append(new_cell)
+
+                # add row to the list
+                new_rows.append(new_row)
+
+            if len(new_rows) > 0:
+                smart.Sheets.add_rows(self.sheetId, new_rows)
+            LOGGER.info('- {} new rows CREATED'. format(len(new_rows)))
 
         return None
