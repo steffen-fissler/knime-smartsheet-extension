@@ -142,6 +142,7 @@ class SmartsheetReaderNode(knext.PythonNode):
             new_rows: List[smartsheet.models.Row] = []
             for ref in output_ref_missing:
                 new_row: smartsheet.models.Row = smartsheet.models.Row()
+                new_row.to_bottom = True
                 source_row = indexed_input.loc[ref]
 
                 for column_name, column_id in output_columns.items():
