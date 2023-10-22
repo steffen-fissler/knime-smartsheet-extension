@@ -16,7 +16,9 @@ class SmartsheetReaderNode(knext.PythonNode):
     Reads Smartsheet sheet
     """
     sheetId = knext.StringParameter(
-        label='Sheet', description='The Smartsheet sheet to be read', default_value='5911621122975620')
+        label='ID', description='The Smartsheet sheet or report to be read', default_value='5911621122975620')
+    sheetIsReport = knext.BoolParameter(
+        label='Report (Sheet otherwise)', description='The source ID is a report (sheet otherwise)', default_value=False)
 
     def __init__(self):
         self.access_token = os.environ.get('SMARTSHEET_ACCESS_TOKEN', '')
@@ -36,12 +38,17 @@ class SmartsheetReaderNode(knext.PythonNode):
     def configure(self, configure_context: knext.ConfigurationContext):
         if not self.access_token:
             raise knext.InvalidParametersError('SMARTSHEET_ACCESS_TOKEN is not set in your env')
+        configure_context.flow_variables.update({'smartsheet.reader.sheet.id': self.sheetId})
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
-
         smart = smartsheet.Smartsheet()
-        sheet = smart.Sheets.get_sheet(self.sheetId)
+        if not self.sheetIsReport:
+            sheet = smart.Sheets.get_sheet(self.sheetId)
+        else:
+            sheet = smart.Reports.get_report(self.sheetId)
+
+        exec_context.flow_variables.update({'smartsheet.reader.sheet.name': sheet.name})
 
         df = pd.DataFrame([[c.value for c in r.cells] for r in sheet.rows])
         df.columns = [c.title for c in sheet.columns]
