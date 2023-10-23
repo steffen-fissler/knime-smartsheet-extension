@@ -58,6 +58,6 @@ class SmartsheetReaderNode(knext.PythonNode):
             df_sheets = pd.DataFrame([])
         else:
             df_sheets = pd.DataFrame([[s.id, s.name] for s in sheet.source_sheets])
-        df_sheets.columns = ["Sheet ID", "Sheet Name"]
+            df_sheets.columns = ["Sheet ID", "Sheet Name"]
 
         return knext.Table.from_pandas(df), knext.Table.from_pandas(df_sheets)
