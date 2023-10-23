@@ -11,6 +11,7 @@ LOGGER = logging.getLogger(__name__)
 
 @knext.node(name='Smartsheet Reader', node_type=knext.NodeType.SOURCE, icon_path='icon.png', category='/io/read')
 @knext.output_table(name='Output Data', description='Data from Smartsheet')
+@knext.output_table(name='Output Sources Sheets', description='Source Sheets for the Report (only for reports)')
 class SmartsheetReaderNode(knext.PythonNode):
     """Smartsheet Reader Node
     Reads Smartsheet sheet
@@ -38,7 +39,7 @@ class SmartsheetReaderNode(knext.PythonNode):
     def configure(self, configure_context: knext.ConfigurationContext):
         if not self.access_token:
             raise knext.InvalidParametersError('SMARTSHEET_ACCESS_TOKEN is not set in your env')
-        configure_context.flow_variables.update({'smartsheet.reader.sheet.id': self.sheetId})
+        configure_context.flow_variables.update({'smartsheet_reader.id': self.sheetId})
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
@@ -46,11 +47,14 @@ class SmartsheetReaderNode(knext.PythonNode):
         if not self.sheetIsReport:
             sheet = smart.Sheets.get_sheet(self.sheetId)
         else:
-            sheet = smart.Reports.get_report(self.sheetId)
+            sheet = smart.Reports.get_report(self.sheetId, include=["sourceSheets"])
 
-        exec_context.flow_variables.update({'smartsheet.reader.sheet.name': sheet.name})
+        exec_context.flow_variables.update({'smartsheet_reader.source_name': sheet.name})
 
         df = pd.DataFrame([[c.value for c in r.cells] for r in sheet.rows])
         df.columns = [c.title for c in sheet.columns]
 
-        return knext.Table.from_pandas(df)
+        df_sheets = pd.DataFrame([[s.id, s.name] for s in sheet.source_sheets])
+        df_sheets.columns = ["Sheet ID", "Sheet Name"]
+
+        return knext.Table.from_pandas(df), knext.Table.from_pandas(df_sheets)
