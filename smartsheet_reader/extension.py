@@ -17,7 +17,7 @@ class SmartsheetReaderNode(knext.PythonNode):
     Reads Smartsheet sheet
     """
     sheetId = knext.StringParameter(
-        label='ID', description='The Smartsheet sheet or report to be read', default_value='5911621122975620')
+        label='ID', description='The Smartsheet sheet or report to be read', default_value='')
     sheetIsReport = knext.BoolParameter(
         label='Report (Sheet otherwise)', description='The source ID is a report (sheet otherwise)', default_value=False)
 
@@ -54,7 +54,10 @@ class SmartsheetReaderNode(knext.PythonNode):
         df = pd.DataFrame([[c.value for c in r.cells] for r in sheet.rows])
         df.columns = [c.title for c in sheet.columns]
 
-        df_sheets = pd.DataFrame([[s.id, s.name] for s in sheet.source_sheets])
+        if not self.sheetIsReport:
+            df_sheets = pd.DataFrame([])
+        else:
+            df_sheets = pd.DataFrame([[s.id, s.name] for s in sheet.source_sheets])
         df_sheets.columns = ["Sheet ID", "Sheet Name"]
 
         return knext.Table.from_pandas(df), knext.Table.from_pandas(df_sheets)
