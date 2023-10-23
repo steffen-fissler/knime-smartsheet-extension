@@ -22,7 +22,7 @@ class SmartsheetReaderNode(knext.PythonNode):
     Writes Smartsheet sheet
     """
     sheetId = knext.StringParameter(
-        label='Sheet', description='The Smartsheet sheet to be written', default_value='1228391034343300')
+        label='Sheet', description='The Smartsheet sheet to be written', default_value='')
     referenceColumn = knext.StringParameter(
         label='Ref column', description='The name of the column to be used as reference')
     addMissingRefs = knext.BoolParameter(
