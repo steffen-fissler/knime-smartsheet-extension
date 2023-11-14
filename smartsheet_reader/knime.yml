@@ -5,6 +5,6 @@ extension_module: extension
 description: Smartsheet Reader
 long_description: This node reads Smartsheet sheets.
 group_id: fr.labedan
-version: 0.1.1
+version: 0.1.2
 vendor: Paul LABEDAN
 license_file: LICENSE.TXT
