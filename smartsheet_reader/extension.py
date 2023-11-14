@@ -51,8 +51,19 @@ class SmartsheetReaderNode(knext.PythonNode):
 
         exec_context.flow_variables.update({'smartsheet_reader.source_name': sheet.name})
 
-        df = pd.DataFrame([[c.value for c in r.cells] for r in sheet.rows])
+        df = pd.DataFrame([[c.value for c in r.cells] for r in sheet.rows], dtype='object')
         df.columns = [c.title for c in sheet.columns]
+        for t in [c.title for c in sheet.columns]:
+            try:
+                df.astype({t: 'float'})
+            except Exception as _:
+                try:
+                    df.astype({t: 'int64'})
+                except Exception as _:
+                    try:
+                        df = df.astype({t: 'string'})
+                    except Exception as _:
+                        pass
 
         if not self.sheetIsReport:
             df_sheets = pd.DataFrame([])
