@@ -47,7 +47,7 @@ class SmartsheetReaderNode(knext.PythonNode):
         if not self.sheetIsReport:
             sheet = smart.Sheets.get_sheet(self.sheetId)
         else:
-            sheet = smart.Reports.get_report(self.sheetId, include=["sourceSheets"])
+            sheet = smart.Reports.get_report(self.sheetId, include=["sourceSheets"], page_size=0x7fffffff)
 
         exec_context.flow_variables.update({'smartsheet_reader.source_name': sheet.name})
 
