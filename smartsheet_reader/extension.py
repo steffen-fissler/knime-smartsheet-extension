@@ -44,14 +44,26 @@ class SmartsheetReaderNode(knext.PythonNode):
 
     def execute(self, exec_context: knext.ExecutionContext):
         smart = smartsheet.Smartsheet()
+
+        page_size = 1000
+
         if not self.sheetIsReport:
-            sheet = smart.Sheets.get_sheet(self.sheetId)
+            sheet = smart.Sheets.get_sheet(self.sheetId, page_size=page_size, page=1)
         else:
-            sheet = smart.Reports.get_report(self.sheetId, include=["sourceSheets"], page_size=0x7fffffff)
+            sheet = smart.Reports.get_report(self.sheetId, include=["sourceSheets"], page_size=page_size, page=1)
 
         exec_context.flow_variables.update({'smartsheet_reader.source_name': sheet.name})
 
-        df = pd.DataFrame([[c.value for c in r.cells] for r in sheet.rows], dtype='object')
+        dfs = list()
+        dfs.append(pd.DataFrame([[c.value for c in r.cells] for r in sheet.rows], dtype='object'))
+
+        LOGGER.info('- {} rows to be read'.format(sheet.total_row_count))
+        for current_page in range(2, int(sheet.total_row_count / page_size) + 2):
+            sheet = smart.Reports.get_report(self.sheetId, include=["sourceSheets"],
+                                             page_size=page_size, page=current_page)
+            dfs.append(pd.DataFrame([[c.value for c in r.cells] for r in sheet.rows], dtype='object'))
+
+        df = pd.concat(dfs, ignore_index=True)
         df.columns = [c.title for c in sheet.columns]
         for t in [c.title for c in sheet.columns]:
             try:
