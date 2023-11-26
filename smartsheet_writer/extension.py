@@ -92,12 +92,14 @@ class SmartsheetReaderNode(knext.PythonNode):
 
         output_ref_no_match: List[SyncRef] = list()
         output_ref_to_be_synced: Dict[SyncRef, RowId] = dict()
+        output_data_to_be_synced: Dict[RowId, smartsheet.models.Row] = dict()
         output_ref_missing: List[SyncRef] = list()
         for row in sheet.rows:
             for cell in [c for c in row.cells if c.value is not None]:
                 if cell.column_id == ref_column_id:
                     if cell.value in input_references:
                         output_ref_to_be_synced[SyncRef(cell.value)] = row.id
+                        output_data_to_be_synced[row.id] = row
                     else:
                         output_ref_no_match.append(SyncRef(cell.value))
         output_ref_missing = list(set(input_references) - set(output_ref_to_be_synced.keys()))
@@ -119,7 +121,7 @@ class SmartsheetReaderNode(knext.PythonNode):
             updated_row.id = rowId
             source_row = indexed_input.loc[ref]
 
-            target_row: smartsheet.models.Row = smart.Sheets.get_row(self.sheetId, rowId, include='columns,columnType')
+            target_row: smartsheet.models.Row = output_data_to_be_synced[rowId]
 
             for old_cell in target_row.cells:
                 if output_columns_name_by_id[old_cell.column_id] in synced_columns:
