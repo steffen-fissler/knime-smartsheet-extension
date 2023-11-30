@@ -48,19 +48,23 @@ class SmartsheetReaderNode(knext.PythonNode):
         page_size = 1000
 
         if not self.sheetIsReport:
-            sheet = smart.Sheets.get_sheet(self.sheetId, page_size=page_size, page=1)
+            get_page = lambda page:\
+                smart.Sheets.get_sheet(self.sheetId, page_size=page_size, page=page)
         else:
-            sheet = smart.Reports.get_report(self.sheetId, include=["sourceSheets"], page_size=page_size, page=1)
+            get_page = lambda page:\
+                smart.Reports.get_report(self.sheetId, include=["sourceSheets"], page_size=page_size, page=page)
+
+        sheet = get_page(1)
 
         exec_context.flow_variables.update({'smartsheet_reader.source_name': sheet.name})
 
         dfs = list()
         dfs.append(pd.DataFrame([[c.value for c in r.cells] for r in sheet.rows], dtype='object'))
 
-        LOGGER.info('- {} rows to be read'.format(sheet.total_row_count))
-        for current_page in range(2, int(sheet.total_row_count / page_size) + 2):
-            sheet = smart.Reports.get_report(self.sheetId, include=["sourceSheets"],
-                                             page_size=page_size, page=current_page)
+        total_row_count = sheet.total_row_count
+        LOGGER.info('- {} rows to be read'.format(total_row_count))
+        for current_page in range(2, int(total_row_count / page_size) + 2):
+            sheet = get_page(current_page)
             dfs.append(pd.DataFrame([[c.value for c in r.cells] for r in sheet.rows], dtype='object'))
 
         df = pd.concat(dfs, ignore_index=True)
