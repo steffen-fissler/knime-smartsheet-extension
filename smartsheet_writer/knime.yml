@@ -5,6 +5,6 @@ extension_module: extension
 description: Smartsheet Writer
 long_description: This node writes Smartsheet sheets.
 group_id: fr.labedan
-version: 0.1.2
+version: 0.1.3
 vendor: Paul LABEDAN
 license_file: LICENSE.TXT

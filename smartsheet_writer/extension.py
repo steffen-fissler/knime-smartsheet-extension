@@ -25,6 +25,8 @@ class SmartsheetReaderNode(knext.PythonNode):
         label='Sheet', description='The Smartsheet sheet to be written', default_value='')
     referenceColumn = knext.StringParameter(
         label='Ref column', description='The name of the column to be used as reference')
+    clearFirst = knext.BoolParameter(
+        label='Clear sheet first', description='Remove all rows before writing')
     addMissingRefs = knext.BoolParameter(
         label='Add new', description='Add new (no match with output) references')
     #removeOldRefs = knext.BoolParameter(
@@ -72,6 +74,11 @@ class SmartsheetReaderNode(knext.PythonNode):
         sheet = smart.Sheets.get_sheet(self.sheetId)
         if not sheet:
             raise knext.InvalidParametersError('Output sheet not found in Smartsheet')
+
+        if self.clearFirst:
+            LOGGER.info("deleting all existing rows...")
+            smart.Sheets.delete_rows(self.sheetId, [r.id for r in sheet.rows])
+            sheet = smart.Sheets.get_sheet(self.sheetId)
 
         input_columns: List[ColumnTitle] = [c for c in input_pandas]
         output_columns: Dict[ColumnTitle, ColumnId] = {c.title: c.id for c in sheet.columns}
