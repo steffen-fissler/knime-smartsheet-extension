@@ -109,7 +109,7 @@ class SmartsheetReaderNode(knext.PythonNode):
                         output_data_to_be_synced[row.id] = row
                     else:
                         output_ref_no_match.append(SyncRef(cell.value))
-        output_ref_missing = list(set(input_references) - set(output_ref_to_be_synced.keys()))
+        output_ref_missing = [ref for ref in input_references if ref not in output_ref_to_be_synced.keys()]
 
         LOGGER.info('sync to be done:')
         LOGGER.info('- matching refs: %d -> UPDATE', len(output_ref_to_be_synced))
