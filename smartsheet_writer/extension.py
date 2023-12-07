@@ -9,6 +9,7 @@ from typing import Dict, List, NewType
 
 RowId = NewType('RowId', int)
 ColumnId = NewType('ColumnId', int)
+ColumnType = NewType('ColumnType', str)
 ColumnTitle = NewType('ColumnTitle', str)
 SyncRef = NewType('SyncRef', str)
 
@@ -55,9 +56,12 @@ class SmartsheetReaderNode(knext.PythonNode):
         return None
 
     @classmethod
-    def get_smartsheet_cell_value(cls, pd_value):
+    def get_smartsheet_cell_value(cls, pd_value, col_type: ColumnType):
         if pd.isna(pd_value):
             return ''
+
+        if col_type == 'CHECKBOX':
+            return bool(pd_value)
 
         try:
             if float(int(pd_value)) == float(pd_value):
@@ -120,6 +124,8 @@ class SmartsheetReaderNode(knext.PythonNode):
 
         indexed_input = input_pandas.set_index(self.referenceColumn)
 
+        columns_type: Dict[ColumnId: ColumnType] = {c.id: c.type for c in sheet.columns}
+
         # sync existing rows
         updated_rows: List[smartsheet.models.Row] = []
         synced_columns = set(input_columns) - {self.referenceColumn}
@@ -136,7 +142,7 @@ class SmartsheetReaderNode(knext.PythonNode):
                     updated_cell.column_id = old_cell.column_id
 
                     value = source_row[output_columns_name_by_id[old_cell.column_id]]
-                    updated_cell.value = self.get_smartsheet_cell_value(value)
+                    updated_cell.value = self.get_smartsheet_cell_value(value, columns_type[old_cell.column_id])
 
                     updated_row.cells.append(updated_cell)
 
@@ -163,7 +169,7 @@ class SmartsheetReaderNode(knext.PythonNode):
                             value = source_row[column_name]
                         else:
                             value = source_row.name
-                        new_cell.value = self.get_smartsheet_cell_value(value)
+                        new_cell.value = self.get_smartsheet_cell_value(value, columns_type[column_id])
 
                         new_row.cells.append(new_cell)
 
