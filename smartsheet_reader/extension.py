@@ -45,7 +45,7 @@ class SmartsheetReaderNode(knext.PythonNode):
     def execute(self, exec_context: knext.ExecutionContext):
         smart = smartsheet.Smartsheet()
 
-        page_size = 1000
+        page_size = 1
 
         if not self.sheetIsReport:
             get_page = lambda page:\
@@ -55,15 +55,15 @@ class SmartsheetReaderNode(knext.PythonNode):
                 smart.Reports.get_report(self.sheetId, include=["sourceSheets"], page_size=page_size, page=page)
 
         sheet = get_page(1)
+        page_size = 1000
 
         exec_context.flow_variables.update({'smartsheet_reader.source_name': sheet.name})
 
         dfs = list()
-        dfs.append(pd.DataFrame([[c.value for c in r.cells] for r in sheet.rows], dtype='object'))
 
         total_row_count = sheet.total_row_count
         LOGGER.info('- {} rows to be read'.format(total_row_count))
-        for current_page in range(2, int(total_row_count / page_size) + 2):
+        for current_page in [x+1 for x in range(0, int((total_row_count-1) / page_size)+1)]:
             sheet = get_page(current_page)
             dfs.append(pd.DataFrame([[c.value for c in r.cells] for r in sheet.rows], dtype='object'))
 
