@@ -1,7 +1,7 @@
 import os
 import logging
 
-import knime.extension as knext
+import knime_extension as knext
 import pandas as pd
 import smartsheet
 from collections.abc import Callable
@@ -15,10 +15,17 @@ SyncRef = NewType('SyncRef', str)
 
 LOGGER = logging.getLogger(__name__)
 
-
-@knext.node(name='Smartsheet Writer', node_type=knext.NodeType.SINK, icon_path='icon.png', category='/io/write')
-@knext.input_table(name='Input Data', description='Data source')
-class SmartsheetReaderNode(knext.PythonNode):
+@knext.node(
+    name='Smartsheet Writer',
+    node_type=knext.NodeType.SINK,
+    category='/community/smartsheet',
+    icon_path='icons/icon/writer.png'
+)
+@knext.input_table(
+    name='Input Data',
+    description='Data source'
+)
+class SmartsheetWriterNode(knext.PythonNode):
     """Smartsheet Writer Node
     Writes Smartsheet sheet
     """

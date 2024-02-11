@@ -1,8 +1,4 @@
-fr.labedan.smartsheet_reader:
-  src: /home/pol/work/plab/knime/basic/smartsheet_reader
-  conda_env_path: /home/pol/work/plab/knime/basic/conda_env
-  debug_mode: true
-fr.labedan.smartsheet_writer:
-  src: /home/pol/work/plab/knime/basic/smartsheet_writer
-  conda_env_path: /home/pol/work/plab/knime/basic/conda_env
+fr.labedan.smartsheet:
+  src: <LOCAL_PATH_TO>/knime-smartsheet-extension/knime_extension
+  conda_env_path: <LOCAL_PATH_TO>/my_python_env
   debug_mode: true

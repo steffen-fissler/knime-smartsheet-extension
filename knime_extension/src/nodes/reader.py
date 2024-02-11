@@ -2,16 +2,26 @@ import os
 import logging
 
 import pandas as pd
-import knime.extension as knext
+import knime_extension as knext
 import smartsheet
 from collections.abc import Callable
 
 LOGGER = logging.getLogger(__name__)
 
-
-@knext.node(name='Smartsheet Reader', node_type=knext.NodeType.SOURCE, icon_path='icon.png', category='/io/read')
-@knext.output_table(name='Output Data', description='Data from Smartsheet')
-@knext.output_table(name='Output Sources Sheets', description='Source Sheets for the Report (only for reports)')
+@knext.node(
+    name='Smartsheet Reader',
+    node_type=knext.NodeType.SOURCE,
+    category='/community/smartsheet',
+    icon_path='icons/icon/reader.png'
+)
+@knext.output_table(
+    name='Output Data',
+    description='Data from Smartsheet'
+)
+@knext.output_table(
+    name='Output Sources Sheets',
+    description='Source Sheets for the Report (only for reports)'
+)
 class SmartsheetReaderNode(knext.PythonNode):
     """Smartsheet Reader Node
     Reads Smartsheet sheet
