@@ -50,7 +50,28 @@ class SmartsheetReaderNode(knext.PythonNode):
         if not self.access_token:
             raise knext.InvalidParametersError('SMARTSHEET_ACCESS_TOKEN is not set in your env')
         configure_context.flow_variables.update({'smartsheet_reader.id': self.sheetId})
-        return None
+
+        smart = smartsheet.Smartsheet()
+
+        page_size = 1
+
+        if not self.sheetIsReport:
+            get_page = lambda page: \
+                smart.Sheets.get_sheet(self.sheetId, page_size=page_size, page=page)
+        else:
+            get_page = lambda page: \
+                smart.Reports.get_report(self.sheetId, include=["sourceSheets"], page_size=page_size, page=page)
+
+        sheet = get_page(1)
+        configure_context.flow_variables.update({'smartsheet_reader.source_name': sheet.name})
+
+        columns = [c.title for c in sheet.columns]
+        # string is returned for all columns as we cannot guess the type without reading/converting all the rows
+        dataSchema = knext.Schema([knext.string() for c in columns], columns)
+
+        sourcesSchema = knext.Schema([knext.int32(), knext.string()], ["Sheet ID", "Sheet Name"])
+
+        return [dataSchema, sourcesSchema]
 
     def execute(self, exec_context: knext.ExecutionContext):
         smart = smartsheet.Smartsheet()
@@ -66,8 +87,6 @@ class SmartsheetReaderNode(knext.PythonNode):
 
         sheet = get_page(1)
         page_size = 1000
-
-        exec_context.flow_variables.update({'smartsheet_reader.source_name': sheet.name})
 
         dfs = list()
 
